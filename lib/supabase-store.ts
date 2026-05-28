@@ -1,4 +1,5 @@
 import { runProbabilityBacktest } from "@/lib/backtest";
+import { store } from "@/lib/demo-store";
 import { answerPrompt, scoreEvent } from "@/lib/scout";
 import { createServiceSupabaseClient, hasSupabaseEnv } from "@/lib/supabase";
 import type {
@@ -53,7 +54,7 @@ export const supabaseStore = {
       ? await query.eq("id", idOrSlug).maybeSingle()
       : await query.eq("slug", idOrSlug).maybeSingle();
     if (error) throw new Error(error.message);
-    if (!data) return null;
+    if (!data) return ensureBundledEventInDatabase(idOrSlug);
     return (await hydrateEvents([data]))[0] ?? null;
   },
 
@@ -496,6 +497,73 @@ async function hydrateEvents(rows: any[]): Promise<EventWithLatest[]> {
 
 async function hydrateEvent(row: any) {
   return (await hydrateEvents([row]))[0] ?? null;
+}
+
+async function ensureBundledEventInDatabase(idOrSlug: string) {
+  const bundled = store.getEvent(idOrSlug);
+  if (!bundled) return null;
+
+  const supabase = createServiceSupabaseClient();
+  await checked(supabase.from("events").upsert({
+    id: bundled.id,
+    slug: bundled.slug,
+    title: bundled.title,
+    category: bundled.category,
+    status: bundled.status,
+    description: bundled.description,
+    resolution_source: bundled.resolutionSource,
+    resolution_rule: bundled.resolutionRule,
+    closes_at: bundled.closesAt,
+    resolves_at: bundled.resolvesAt,
+    outcome: bundled.outcome ?? null,
+    created_at: bundled.createdAt,
+  }, { onConflict: "id" }));
+
+  await Promise.all([
+    checked(supabase.from("event_sources").delete().eq("event_id", bundled.id)),
+    checked(supabase.from("probability_snapshots").delete().eq("event_id", bundled.id)),
+    checked(supabase.from("market_price_bars").delete().eq("event_id", bundled.id)),
+    checked(supabase.from("event_resolution_rules").delete().eq("event_id", bundled.id)),
+  ]);
+
+  const sources = store.sources(bundled.id).map((source) => ({
+    event_id: source.eventId,
+    provider: source.provider,
+    provider_url: source.providerUrl,
+    label: source.label,
+    last_updated_at: source.lastUpdatedAt,
+    status: source.status,
+  }));
+  const snapshots = store.history(bundled.id).map((snapshot) => ({
+    event_id: snapshot.eventId,
+    probability: snapshot.probability,
+    confidence: snapshot.confidence,
+    source_count: snapshot.sourceCount,
+    data_freshness_minutes: snapshot.dataFreshnessMinutes,
+    explanation: snapshot.explanation,
+    risk_notes: snapshot.riskNotes,
+    created_at: snapshot.createdAt,
+  }));
+  const bars = store.bars(bundled.id).map((bar) => ({
+    event_id: bar.eventId,
+    time: bar.time,
+    probability: bar.probability,
+    volume: bar.volume,
+  }));
+
+  if (sources.length) await checked(supabase.from("event_sources").insert(sources));
+  if (snapshots.length) await checked(supabase.from("probability_snapshots").insert(snapshots));
+  if (bars.length) await checked(supabase.from("market_price_bars").insert(bars));
+  await checked(supabase.from("event_resolution_rules").upsert({
+    event_id: bundled.id,
+    category: bundled.category,
+    provider: bundled.resolutionSource,
+    rule: { rule: bundled.resolutionRule, conflict_policy: "needs_review" },
+  }, { onConflict: "event_id" }));
+
+  const { data, error } = await supabase.from("events").select("*").eq("id", bundled.id).single();
+  if (error) throw new Error(error.message);
+  return hydrateEvent(data);
 }
 
 async function latestSnapshots(eventIds: string[]) {

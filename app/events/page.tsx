@@ -1,30 +1,24 @@
 import { AppShell } from "@/components/AppShell";
-import { EventCard } from "@/components/EventCard";
-import { store } from "@/lib/demo-store";
+import { EventMarketplace } from "@/components/EventMarketplace";
+import { catalogEvents, mergeEventLists } from "@/lib/event-catalog";
 import { canUseSupabaseStore, supabaseStore } from "@/lib/supabase-store";
 
 export const dynamic = "force-dynamic";
 
 export default async function EventsPage() {
-  let events = store.listEvents();
+  let events = catalogEvents();
   if (canUseSupabaseStore()) {
     try {
       const databaseEvents = await supabaseStore.listEvents();
-      if (databaseEvents.length > 0) events = databaseEvents;
+      events = mergeEventLists(databaseEvents, events);
     } catch {
-      events = store.listEvents();
+      events = catalogEvents();
     }
   }
+
   return (
     <AppShell>
-      <div className="page-heading">
-        <span>Event explorer</span>
-        <h1>Browse prediction events</h1>
-        <p>V1 stores Andromeda-owned events generated from external factual data sources and cached snapshots.</p>
-      </div>
-      <div className="event-grid">
-        {events.map((event) => <EventCard event={event} key={event.id} />)}
-      </div>
+      <EventMarketplace initialEvents={events} />
     </AppShell>
   );
 }

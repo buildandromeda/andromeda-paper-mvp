@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, Database, LineChart, ShieldCheck, Sparkles, User, WalletCards } from "lucide-react";
+import { LandingMotion } from "@/components/LandingMotion";
 import { WaitlistForm } from "@/components/WaitlistForm";
 import { store } from "@/lib/demo-store";
 
@@ -8,6 +9,7 @@ export default function LandingPage() {
 
   return (
     <main className="landing andromeda-landing">
+      <LandingMotion />
       <nav className="landing-nav glass-nav">
         <Link href="/" className="wordmark">
           <span>Andromeda</span>
@@ -15,6 +17,7 @@ export default function LandingPage() {
         </Link>
         <div className="nav-center">
           <a href="#features">Features</a>
+          <Link href="/events">Markets</Link>
           <a href="#mission">Mission</a>
           <Link href="/data-sources">Sources</Link>
         </div>
@@ -24,7 +27,7 @@ export default function LandingPage() {
         </div>
       </nav>
 
-      <section className="galaxy-hero">
+      <section className="galaxy-hero" data-motion>
         <div className="hero-copy">
           <h1>
             <span>Don&apos;t Guess.</span>
@@ -33,12 +36,13 @@ export default function LandingPage() {
           <p>AI-assisted prediction market analysis for sports, weather, macro, stocks, crypto, and politics. Paper-only until the edge is proven.</p>
           <div className="hero-actions center-actions">
             <Link className="purple-button" href="/dashboard">Launch terminal</Link>
+            <Link className="ghost-button" href="/events">Browse markets</Link>
             <Link className="ghost-button" href="/risk">Risk disclaimer</Link>
           </div>
         </div>
       </section>
 
-      <section id="features" className="product-band strategy-band">
+      <section id="features" className="product-band strategy-band" data-motion>
         <div className="copy-block">
           <span className="violet-kicker">Strategy builder</span>
           <h2>Generate a paper algorithm from your market view</h2>
@@ -61,7 +65,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="product-band reverse-band">
+      <section className="product-band reverse-band" data-motion>
         <div className="mock-chart-card">
           <div className="card-corners" />
           <div className="mock-chart-head">
@@ -95,7 +99,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="product-band paper-band">
+      <section className="product-band paper-band" data-motion>
         <div className="copy-block">
           <span className="violet-kicker">Paper trading</span>
           <h2>Simulate before you risk anything</h2>
@@ -123,7 +127,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section id="mission" className="mission-band">
+      <section id="mission" className="mission-band" data-motion>
         <h2>With Andromeda, every signal is backed by tested data, paper traded, and sized with precision, so you trade with <span>an edge, not a hunch.</span></h2>
         <div className="mission-actions">
           <Link className="purple-button" href="/auth">Get started <ArrowRight size={18} /></Link>
@@ -131,7 +135,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="feature-band final-feature-band">
+      <section className="feature-band final-feature-band" data-motion>
         <article><Database /><strong>Own event database</strong><p>External APIs feed normalized Andromeda events, not cash market execution.</p></article>
         <article><WalletCards /><strong>Paper trading</strong><p>YES/NO simulation, ledger, P&L, and settlement notifications.</p></article>
         <article><LineChart /><strong>TradingView-style charts</strong><p>Probability history and terminal charts built with Lightweight Charts.</p></article>

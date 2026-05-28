@@ -26,9 +26,6 @@ import {
 } from "@/lib/utils";
 
 const events = seedEvents();
-const sources = seedSources();
-const snapshots = seedSnapshots();
-const bars = seedBars();
 const accounts = new Map<string, PaperAccount>();
 const positions = new Map<string, PaperPosition[]>();
 const trades = new Map<string, PaperTrade[]>();
@@ -56,15 +53,15 @@ export const store = {
   },
 
   history(eventId: string) {
-    return snapshots.filter((snapshot) => snapshot.eventId === eventId);
+    return seedSnapshots().filter((snapshot) => snapshot.eventId === eventId);
   },
 
   bars(eventId: string) {
-    return bars.filter((bar) => bar.eventId === eventId);
+    return seedBars().filter((bar) => bar.eventId === eventId);
   },
 
   sources(eventId: string) {
-    return sources.filter((source) => source.eventId === eventId);
+    return seedSources().filter((source) => source.eventId === eventId);
   },
 
   ensureUser(userId = DEMO_USER_ID) {
@@ -326,7 +323,9 @@ export const store = {
 };
 
 function withLatest(event: PredictionEvent) {
-  const latest = snapshots
+  const currentSnapshots = seedSnapshots();
+  const currentSources = seedSources();
+  const latest = currentSnapshots
     .filter((snapshot) => snapshot.eventId === event.id)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
   const scored = scoreEvent(event, latest);
@@ -337,7 +336,7 @@ function withLatest(event: PredictionEvent) {
       probability: scored.probability,
       confidence: scored.confidence,
     },
-    sources: sources.filter((source) => source.eventId === event.id),
+    sources: currentSources.filter((source) => source.eventId === event.id),
   };
 }
 
