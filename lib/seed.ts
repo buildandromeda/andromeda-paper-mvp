@@ -19,7 +19,7 @@ const EVENT_DEFS: Array<{
   description: string;
 }> = [
   {
-    id: "evt_nba_celtics_knicks",
+    id: "00000000-0000-4000-8000-000000000001",
     slug: "celtics-beat-knicks-next-game",
     title: "Will Boston beat New York in their next listed game?",
     category: "sports",
@@ -31,7 +31,7 @@ const EVENT_DEFS: Array<{
     description: "Sports event generated from odds-implied probability with form and injury adjustments.",
   },
   {
-    id: "evt_weather_phx_110",
+    id: "00000000-0000-4000-8000-000000000002",
     slug: "phoenix-above-110-this-week",
     title: "Will Phoenix record a high temperature above 110F this week?",
     category: "weather",
@@ -43,7 +43,7 @@ const EVENT_DEFS: Array<{
     description: "Weather event using latest forecast, climatology, model agreement, and recent trend.",
   },
   {
-    id: "evt_cpi_above_consensus",
+    id: "00000000-0000-4000-8000-000000000003",
     slug: "next-cpi-above-consensus",
     title: "Will next US CPI print above consensus?",
     category: "economics",
@@ -55,7 +55,7 @@ const EVENT_DEFS: Array<{
     description: "Macro event using nowcast, historical surprise distribution, and market-implied proxies.",
   },
   {
-    id: "evt_nvda_150",
+    id: "00000000-0000-4000-8000-000000000004",
     slug: "nvda-above-150-by-quarter-end",
     title: "Will NVDA close above $150 by quarter end?",
     category: "stocks",
@@ -67,7 +67,7 @@ const EVENT_DEFS: Array<{
     description: "Equity threshold event using market price, volatility, filings/news catalyst, and history.",
   },
   {
-    id: "evt_btc_120k",
+    id: "00000000-0000-4000-8000-000000000005",
     slug: "bitcoin-above-120k-by-q3",
     title: "Will Bitcoin trade above $120,000 by the end of Q3?",
     category: "crypto",
@@ -79,7 +79,7 @@ const EVENT_DEFS: Array<{
     description: "Crypto threshold event using price momentum, volatility, and historical break behavior.",
   },
   {
-    id: "evt_bill_ai_safety",
+    id: "00000000-0000-4000-8000-000000000006",
     slug: "federal-ai-safety-bill-passes-house",
     title: "Will a federal AI safety bill pass the House this session?",
     category: "politics",

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { store } from "@/lib/demo-store";
+import { authenticatedFetch } from "@/lib/client-api";
 
 type EventWithLatest = ReturnType<typeof store.listEvents>[number];
 
@@ -12,13 +13,13 @@ export function AlertsClient({ events }: { events: EventWithLatest[] }) {
   const [alerts, setAlerts] = useState<any[]>([]);
 
   async function load() {
-    const res = await fetch("/api/alerts");
+    const res = await authenticatedFetch("/api/alerts");
     const data = await res.json();
     setAlerts(data.alerts);
   }
 
   async function create() {
-    await fetch("/api/alerts", {
+    await authenticatedFetch("/api/alerts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ eventId, condition, probability }),
@@ -27,7 +28,7 @@ export function AlertsClient({ events }: { events: EventWithLatest[] }) {
   }
 
   async function remove(id: string) {
-    await fetch(`/api/alerts/${id}`, { method: "DELETE" });
+    await authenticatedFetch(`/api/alerts/${id}`, { method: "DELETE" });
     load();
   }
 

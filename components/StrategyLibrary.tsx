@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { authenticatedFetch } from "@/lib/client-api";
 
 export function StrategyLibrary() {
   const [strategies, setStrategies] = useState<any[]>([]);
@@ -8,13 +9,13 @@ export function StrategyLibrary() {
   const [rule, setRule] = useState("Buy YES when probability crosses above 55% and confidence is above 60.");
 
   async function load() {
-    const res = await fetch("/api/strategies");
+    const res = await authenticatedFetch("/api/strategies");
     const data = await res.json();
     setStrategies(data.strategies);
   }
 
   async function save() {
-    await fetch("/api/strategies", {
+    await authenticatedFetch("/api/strategies", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, rule, description: "Saved from Strategy Library", eventCategory: "all" }),

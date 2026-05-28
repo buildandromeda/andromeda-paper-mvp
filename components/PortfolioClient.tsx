@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { authenticatedFetch } from "@/lib/client-api";
 
 type Portfolio = {
   account: { cash: number; startingCash: number };
@@ -20,10 +21,16 @@ type Portfolio = {
 
 export function PortfolioClient() {
   const [portfolio, setPortfolio] = useState<Portfolio | null>(null);
+  const [trades, setTrades] = useState<any[]>([]);
 
   async function load() {
-    const res = await fetch("/api/paper/portfolio", { cache: "no-store" });
-    setPortfolio(await res.json());
+    const [portfolioRes, tradesRes] = await Promise.all([
+      authenticatedFetch("/api/paper/portfolio", { cache: "no-store" }),
+      authenticatedFetch("/api/paper/trades", { cache: "no-store" }),
+    ]);
+    setPortfolio(await portfolioRes.json());
+    const tradeData = await tradesRes.json();
+    setTrades(tradeData.trades ?? []);
   }
 
   useEffect(() => {
@@ -58,6 +65,26 @@ export function PortfolioClient() {
                 </tr>
               ))}
             </tbody>
+          </table>
+        </div>
+      </section>
+      <section className="panel">
+        <div className="section-heading"><span>Ledger</span><h2>Recent paper trades</h2></div>
+        <div className="table-wrap">
+          <table>
+            <thead><tr><th>Time</th><th>Event</th><th>Action</th><th>Side</th><th>Qty</th><th>Price</th></tr></thead>
+            <tbody>{trades.length === 0 ? (
+              <tr><td colSpan={6}>No trades yet. Open an event and place a paper order.</td></tr>
+            ) : trades.map((trade) => (
+              <tr key={trade.id}>
+                <td>{new Date(trade.createdAt).toLocaleString()}</td>
+                <td>{trade.event?.title}</td>
+                <td>{trade.action}</td>
+                <td>{trade.side}</td>
+                <td>{trade.quantity}</td>
+                <td>{(trade.price * 100).toFixed(1)}c</td>
+              </tr>
+            ))}</tbody>
           </table>
         </div>
       </section>

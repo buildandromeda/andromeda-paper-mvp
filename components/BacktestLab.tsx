@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { store } from "@/lib/demo-store";
+import { authenticatedFetch } from "@/lib/client-api";
 
 type EventWithLatest = ReturnType<typeof store.listEvents>[number];
 
@@ -13,7 +14,7 @@ export function BacktestLab({ events }: { events: EventWithLatest[] }) {
 
   async function run() {
     setMessage("Running backtest...");
-    const res = await fetch("/api/backtests", {
+    const res = await authenticatedFetch("/api/backtests", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

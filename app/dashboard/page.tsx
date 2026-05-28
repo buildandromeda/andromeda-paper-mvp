@@ -2,13 +2,25 @@ import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { EventCard } from "@/components/EventCard";
 import { store } from "@/lib/demo-store";
+import { canUseSupabaseStore, supabaseStore } from "@/lib/supabase-store";
 
 export const dynamic = "force-dynamic";
 
-export default function DashboardPage() {
-  const events = store.listEvents();
+export default async function DashboardPage() {
+  let events = store.listEvents();
+  let leaderboard = store.leaderboard().slice(0, 3);
+  if (canUseSupabaseStore()) {
+    try {
+      const databaseEvents = await supabaseStore.listEvents();
+      const databaseLeaderboard = await supabaseStore.leaderboard();
+      if (databaseEvents.length > 0) events = databaseEvents;
+      if (databaseLeaderboard.length > 0) leaderboard = databaseLeaderboard.slice(0, 3);
+    } catch {
+      events = store.listEvents();
+      leaderboard = store.leaderboard().slice(0, 3);
+    }
+  }
   const portfolio = store.portfolio("demo-user");
-  const leaderboard = store.leaderboard().slice(0, 3);
 
   return (
     <AppShell>
@@ -51,7 +63,7 @@ export default function DashboardPage() {
             {leaderboard.map((row) => (
               <Link className="leader-row" href="/leaderboard" key={row.userId}>
                 <strong>#{row.rank} {row.displayName}</strong>
-                <span>{row.totalScore.toFixed(1)} score · {row.paperReturnPct.toFixed(2)}%</span>
+                <span>{row.totalScore.toFixed(1)} score - {row.paperReturnPct.toFixed(2)}%</span>
               </Link>
             ))}
           </div>

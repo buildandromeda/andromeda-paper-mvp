@@ -1,11 +1,20 @@
 import { AppShell } from "@/components/AppShell";
 import { EventCard } from "@/components/EventCard";
 import { store } from "@/lib/demo-store";
+import { canUseSupabaseStore, supabaseStore } from "@/lib/supabase-store";
 
 export const dynamic = "force-dynamic";
 
-export default function EventsPage() {
-  const events = store.listEvents();
+export default async function EventsPage() {
+  let events = store.listEvents();
+  if (canUseSupabaseStore()) {
+    try {
+      const databaseEvents = await supabaseStore.listEvents();
+      if (databaseEvents.length > 0) events = databaseEvents;
+    } catch {
+      events = store.listEvents();
+    }
+  }
   return (
     <AppShell>
       <div className="page-heading">

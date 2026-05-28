@@ -1,8 +1,9 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
-import { fail, getUserId, ok, parseJson } from "@/lib/api";
+import { fail, getRequestUser, ok, parseJson } from "@/lib/api";
 import { store } from "@/lib/demo-store";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { supabaseStore } from "@/lib/supabase-store";
 
 const schema = z.object({
   prompt: z.string().min(3),
@@ -10,13 +11,16 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const userId = getUserId(req);
-  const limited = checkRateLimit(`model:${userId}`, 15, 60_000);
+  const user = await getRequestUser(req);
+  const limited = checkRateLimit(`model:${user.userId}`, 15, 60_000);
   if (!limited.ok) return fail("Rate limit exceeded for model analysis.", 429);
 
   try {
     const body = schema.parse(await parseJson(req));
-    return ok({ run: store.analyze(userId, body.prompt, body.eventId) }, 201);
+    const run = user.isAuthenticated
+      ? await supabaseStore.analyze(user.userId, body.prompt, body.eventId)
+      : store.analyze(user.userId, body.prompt, body.eventId);
+    return ok({ run }, 201);
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Model analysis failed.");
   }

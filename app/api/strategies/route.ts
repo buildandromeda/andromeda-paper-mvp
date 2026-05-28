@@ -1,7 +1,8 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
-import { fail, getUserId, ok, parseJson } from "@/lib/api";
+import { fail, getRequestUser, ok, parseJson } from "@/lib/api";
 import { store } from "@/lib/demo-store";
+import { supabaseStore } from "@/lib/supabase-store";
 
 const schema = z.object({
   name: z.string().min(2),
@@ -11,13 +12,20 @@ const schema = z.object({
 });
 
 export async function GET(req: NextRequest) {
-  return ok({ strategies: store.listStrategies(getUserId(req)) });
+  const user = await getRequestUser(req);
+  return ok({ strategies: user.isAuthenticated
+    ? await supabaseStore.listStrategies(user.userId)
+    : store.listStrategies(user.userId) });
 }
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getRequestUser(req);
     const body = schema.parse(await parseJson(req));
-    return ok({ strategy: store.saveStrategy(getUserId(req), body) }, 201);
+    const strategy = user.isAuthenticated
+      ? await supabaseStore.saveStrategy(user.userId, body)
+      : store.saveStrategy(user.userId, body);
+    return ok({ strategy }, 201);
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Strategy save failed.");
   }

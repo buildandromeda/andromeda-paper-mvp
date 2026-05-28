@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { store } from "@/lib/demo-store";
+import { authenticatedFetch } from "@/lib/client-api";
 
 type EventWithLatest = ReturnType<typeof store.listEvents>[number];
 
@@ -15,7 +16,7 @@ export function PaperOrderTicket({ event }: { event: EventWithLatest }) {
 
   async function placeOrder() {
     setMessage("Submitting paper order...");
-    const res = await fetch("/api/paper/orders", {
+    const res = await authenticatedFetch("/api/paper/orders", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ eventId: event.id, action, side, quantity }),

@@ -7,7 +7,7 @@ export default function OnboardingPage() {
       <div className="page-heading">
         <span>Onboarding</span>
         <h1>Create your paper account</h1>
-        <p>The demo flow creates a local paper account. In production this happens after Supabase auth signup.</p>
+        <p>Signed-in users get a persistent Supabase paper account. Visitors can still use demo mode without saving data.</p>
       </div>
       <section className="panel">
         <OnboardingButton />

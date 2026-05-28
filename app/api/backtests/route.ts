@@ -1,8 +1,9 @@
 import type { NextRequest } from "next/server";
 import { z } from "zod";
-import { fail, getUserId, ok, parseJson } from "@/lib/api";
+import { fail, getRequestUser, ok, parseJson } from "@/lib/api";
 import { store } from "@/lib/demo-store";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { supabaseStore } from "@/lib/supabase-store";
 
 const schema = z.object({
   eventId: z.string().min(1),
@@ -14,13 +15,16 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const userId = getUserId(req);
-  const limited = checkRateLimit(`backtests:${userId}`, 10, 60_000);
+  const user = await getRequestUser(req);
+  const limited = checkRateLimit(`backtests:${user.userId}`, 10, 60_000);
   if (!limited.ok) return fail("Rate limit exceeded for backtests.", 429);
 
   try {
     const body = schema.parse(await parseJson(req));
-    return ok({ backtest: store.runBacktest(userId, body) }, 201);
+    const backtest = user.isAuthenticated
+      ? await supabaseStore.runBacktest(user.userId, body)
+      : store.runBacktest(user.userId, body);
+    return ok({ backtest }, 201);
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Backtest failed.");
   }

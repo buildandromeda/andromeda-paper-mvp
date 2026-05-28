@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { store } from "@/lib/demo-store";
+import { authenticatedFetch } from "@/lib/client-api";
 
 type EventWithLatest = ReturnType<typeof store.listEvents>[number];
 
@@ -12,7 +13,7 @@ export function ModelChat({ events }: { events: EventWithLatest[] }) {
   const [note, setNote] = useState("");
 
   async function analyze() {
-    const res = await fetch("/api/model/analyze", {
+    const res = await authenticatedFetch("/api/model/analyze", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ eventId, prompt }),
@@ -23,7 +24,7 @@ export function ModelChat({ events }: { events: EventWithLatest[] }) {
 
   async function sendFeedback(helpful: boolean) {
     if (!run) return;
-    await fetch("/api/model/feedback", {
+    await authenticatedFetch("/api/model/feedback", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ modelRunId: run.id, helpful, note }),

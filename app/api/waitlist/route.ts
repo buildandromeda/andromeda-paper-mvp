@@ -3,6 +3,7 @@ import { z } from "zod";
 import { fail, ok, parseJson } from "@/lib/api";
 import { store } from "@/lib/demo-store";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { canUseSupabaseStore, supabaseStore } from "@/lib/supabase-store";
 
 const schema = z.object({
   email: z.string().email(),
@@ -16,6 +17,13 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = schema.parse(await parseJson(req));
+    if (canUseSupabaseStore()) {
+      try {
+        return ok(await supabaseStore.joinWaitlist(body.email, body.role), 201);
+      } catch {
+        // Fall back to demo waitlist if Supabase is temporarily unavailable.
+      }
+    }
     return ok(store.joinWaitlist(body.email, body.role), 201);
   } catch (error) {
     return fail(error instanceof Error ? error.message : "Waitlist submission failed.");

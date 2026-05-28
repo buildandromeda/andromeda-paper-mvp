@@ -1,10 +1,19 @@
 import { AppShell } from "@/components/AppShell";
 import { store } from "@/lib/demo-store";
+import { canUseSupabaseStore, supabaseStore } from "@/lib/supabase-store";
 
 export const dynamic = "force-dynamic";
 
-export default function LeaderboardPage() {
-  const rows = store.leaderboard();
+export default async function LeaderboardPage() {
+  let rows = store.leaderboard();
+  if (canUseSupabaseStore()) {
+    try {
+      const databaseRows = await supabaseStore.leaderboard();
+      if (databaseRows.length > 0) rows = databaseRows;
+    } catch {
+      rows = store.leaderboard();
+    }
+  }
   return (
     <AppShell>
       <div className="page-heading">

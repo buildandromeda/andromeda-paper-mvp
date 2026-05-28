@@ -8,6 +8,7 @@ import {
   Home,
   Layers,
   LineChart,
+  LogIn,
   ShieldCheck,
   Trophy,
   WalletCards,
@@ -23,6 +24,7 @@ const navItems = [
   { href: "/leaderboard", label: "Rewards", icon: Trophy },
   { href: "/alerts", label: "Alerts", icon: Bell },
   { href: "/data-sources", label: "Sources", icon: ShieldCheck },
+  { href: "/auth", label: "Sign in", icon: LogIn },
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {

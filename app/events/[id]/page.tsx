@@ -4,15 +4,30 @@ import { ConfidenceBadge } from "@/components/ConfidenceBadge";
 import { PaperOrderTicket } from "@/components/PaperOrderTicket";
 import { ProbabilityChart } from "@/components/ProbabilityChart";
 import { store } from "@/lib/demo-store";
+import { canUseSupabaseStore, supabaseStore } from "@/lib/supabase-store";
 
 export const dynamic = "force-dynamic";
 
 export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const event = store.getEvent(id);
+  let event = store.getEvent(id);
+  let history = event ? store.history(event.id) : [];
+  let sources = event ? store.sources(event.id) : [];
+
+  if (canUseSupabaseStore()) {
+    try {
+      const databaseEvent = await supabaseStore.getEvent(id);
+      if (databaseEvent) {
+        event = databaseEvent;
+        history = await supabaseStore.history(databaseEvent.id);
+        sources = await supabaseStore.sources(databaseEvent.id);
+      }
+    } catch {
+      // Keep demo event data if Supabase is temporarily unavailable.
+    }
+  }
+
   if (!event) notFound();
-  const history = store.history(event.id);
-  const sources = store.sources(event.id);
 
   return (
     <AppShell>
@@ -45,7 +60,7 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           {sources.map((source) => (
             <article className="mini-card" key={source.id}>
               <strong>{source.label}</strong>
-              <p>{source.provider} · {source.status} · last updated {new Date(source.lastUpdatedAt).toLocaleString()}</p>
+              <p>{source.provider} - {source.status} - last updated {new Date(source.lastUpdatedAt).toLocaleString()}</p>
             </article>
           ))}
         </div>
