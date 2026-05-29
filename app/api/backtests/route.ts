@@ -2,8 +2,9 @@ import type { NextRequest } from "next/server";
 import { z } from "zod";
 import { fail, getRequestUser, ok, parseJson } from "@/lib/api";
 import { store } from "@/lib/demo-store";
+import { getLiveEvent } from "@/lib/live-event-feed";
 import { checkRateLimit } from "@/lib/rate-limit";
-import { supabaseStore } from "@/lib/supabase-store";
+import { canUseSupabaseStore, supabaseStore } from "@/lib/supabase-store";
 
 const schema = z.object({
   eventId: z.string().min(1),
@@ -21,6 +22,11 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = schema.parse(await parseJson(req));
+    const liveEvent = await getLiveEvent(body.eventId);
+    if (liveEvent) {
+      if (user.isAuthenticated && canUseSupabaseStore()) await supabaseStore.upsertLiveEvent(liveEvent);
+      else store.registerLiveEvent(liveEvent);
+    }
     const backtest = user.isAuthenticated
       ? await supabaseStore.runBacktest(user.userId, body)
       : store.runBacktest(user.userId, body);

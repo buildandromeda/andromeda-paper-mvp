@@ -1,6 +1,7 @@
 import { runProbabilityBacktest } from "@/lib/backtest";
 import { store } from "@/lib/demo-store";
-import { answerPrompt, scoreEvent } from "@/lib/scout";
+import type { LiveEvent } from "@/lib/live-event-feed";
+import { answerPromptAsync, scoreEvent } from "@/lib/scout";
 import { createServiceSupabaseClient, hasSupabaseEnv } from "@/lib/supabase";
 import type {
   Alert,
@@ -56,6 +57,78 @@ export const supabaseStore = {
     if (error) throw new Error(error.message);
     if (!data) return ensureBundledEventInDatabase(idOrSlug);
     return (await hydrateEvents([data]))[0] ?? null;
+  },
+
+  async upsertLiveEvent(event: LiveEvent) {
+    const supabase = createServiceSupabaseClient();
+    await checked(supabase.from("events").upsert({
+      id: event.id,
+      slug: event.slug,
+      title: event.title,
+      category: event.category,
+      status: event.status,
+      description: event.description,
+      resolution_source: event.resolutionSource,
+      resolution_rule: event.resolutionRule,
+      closes_at: event.closesAt,
+      resolves_at: event.resolvesAt,
+      outcome: event.outcome ?? null,
+      created_at: event.createdAt,
+    }, { onConflict: "id" }));
+
+    await Promise.all([
+      checked(supabase.from("event_sources").delete().eq("event_id", event.id)),
+      checked(supabase.from("probability_snapshots").delete().eq("event_id", event.id)),
+      checked(supabase.from("market_price_bars").delete().eq("event_id", event.id)),
+      checked(supabase.from("event_resolution_rules").delete().eq("event_id", event.id)),
+    ]);
+
+    if (event.sources.length) {
+      await checked(supabase.from("event_sources").insert(event.sources.map((source) => ({
+        event_id: source.eventId,
+        provider: source.provider,
+        provider_url: source.providerUrl,
+        label: source.label,
+        last_updated_at: source.lastUpdatedAt,
+        status: source.status,
+      }))));
+    }
+
+    if (event.history.length) {
+      await checked(supabase.from("probability_snapshots").insert(event.history.map((snapshot) => ({
+        event_id: snapshot.eventId,
+        probability: snapshot.probability,
+        confidence: snapshot.confidence,
+        source_count: snapshot.sourceCount,
+        data_freshness_minutes: snapshot.dataFreshnessMinutes,
+        explanation: snapshot.explanation,
+        risk_notes: snapshot.riskNotes,
+        created_at: snapshot.createdAt,
+      }))));
+    }
+
+    if (event.bars.length) {
+      await checked(supabase.from("market_price_bars").insert(event.bars.map((bar) => ({
+        event_id: bar.eventId,
+        time: bar.time,
+        probability: bar.probability,
+        volume: bar.volume,
+      }))));
+    }
+
+    await checked(supabase.from("event_resolution_rules").upsert({
+      event_id: event.id,
+      category: event.category,
+      provider: event.resolutionSource,
+      rule: {
+        rule: event.resolutionRule,
+        source_url: event.latest.calculation?.sourceUrl,
+        calculation: event.latest.calculation,
+        conflict_policy: "needs_review",
+      },
+    }, { onConflict: "event_id" }));
+
+    return event;
   },
 
   async history(eventId: string) {
@@ -338,7 +411,7 @@ export const supabaseStore = {
   async analyze(userId: string, prompt: string, eventId?: string) {
     await this.ensureUser(userId);
     const event = eventId ? await this.getEvent(eventId) : (await this.listEvents())[0];
-    const response = answerPrompt(prompt, event ?? undefined, event?.latest);
+    const response = await answerPromptAsync(prompt, event ?? undefined, event?.latest);
     const supabase = createServiceSupabaseClient();
     const { data, error } = await supabase.from("model_runs").insert({
       user_id: userId,

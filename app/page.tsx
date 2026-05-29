@@ -2,10 +2,13 @@ import Link from "next/link";
 import { ArrowRight, Database, LineChart, ShieldCheck, Sparkles, User, WalletCards } from "lucide-react";
 import { LandingMotion } from "@/components/LandingMotion";
 import { WaitlistForm } from "@/components/WaitlistForm";
-import { store } from "@/lib/demo-store";
+import { buildLiveEventFeed } from "@/lib/live-event-feed";
 
-export default function LandingPage() {
-  const events = store.listEvents().slice(0, 3);
+export const dynamic = "force-dynamic";
+
+export default async function LandingPage() {
+  const feed = await buildLiveEventFeed();
+  const events = feed.events.slice(0, 3);
 
   return (
     <main className="landing andromeda-landing">
@@ -28,6 +31,10 @@ export default function LandingPage() {
       </nav>
 
       <section className="galaxy-hero" data-motion>
+        <video className="hero-video" autoPlay muted loop playsInline poster="/andromeda-galaxy.png">
+          <source src="/assets/galaxy-bg.mp4" type="video/mp4" />
+        </video>
+        <div className="hero-scrim" />
         <div className="hero-copy">
           <h1>
             <span>Don&apos;t Guess.</span>

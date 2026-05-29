@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import type { store } from "@/lib/demo-store";
 import { authenticatedFetch } from "@/lib/client-api";
+import type { CatalogEvent } from "@/lib/event-catalog";
 
-type EventWithLatest = ReturnType<typeof store.listEvents>[number];
+type EventWithLatest = CatalogEvent;
 
 export function PaperOrderTicket({ event }: { event: EventWithLatest }) {
   const [side, setSide] = useState<"yes" | "no">("yes");

@@ -32,6 +32,14 @@ export type ProbabilitySnapshot = {
   explanation: string;
   riskNotes: string;
   createdAt: string;
+  calculation?: {
+    provider: string;
+    sourceUrl: string;
+    formula: string;
+    inputs: Array<{ label: string; value: string }>;
+    warnings: string[];
+    isProviderBacked: boolean;
+  };
 };
 
 export type MarketPriceBar = {
@@ -55,6 +63,9 @@ export type PredictionEvent = {
   resolvesAt: string;
   outcome?: TradeSide;
   createdAt: string;
+  tradeable?: boolean;
+  providerBacked?: boolean;
+  sourceWarnings?: string[];
 };
 
 export type PaperAccount = {
@@ -124,6 +135,10 @@ export type BacktestResult = {
     exitPrice: number;
     pnl: number;
   }>;
+  assumptions?: string[];
+  sampleSize?: number;
+  dataStart?: string;
+  dataEnd?: string;
   createdAt: string;
 };
 

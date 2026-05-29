@@ -96,7 +96,7 @@ async function cryptoSuggestion(query: string): Promise<CustomEventSuggestion | 
   const url = `https://api.coingecko.com/api/v3/simple/price?ids=${match.id}&vs_currencies=usd&include_24hr_change=true`;
   const json = await safeJson<CoinGeckoPrice>(url);
   const price = json?.[match.id]?.usd;
-  if (!price) return fallbackSuggestion(query, "crypto", "CoinGecko");
+  if (!price) return null;
 
   const change = json?.[match.id]?.usd_24h_change ?? 0;
   const threshold = niceThreshold(price * (change >= 0 ? 1.08 : 1.04));
@@ -122,7 +122,7 @@ async function weatherSuggestion(query: string): Promise<CustomEventSuggestion |
   const geocodeUrl = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city ?? query)}&count=1&language=en&format=json`;
   const geo = await safeJson<WeatherGeo>(geocodeUrl);
   const place = geo?.results?.[0];
-  if (!place) return fallbackSuggestion(query, "weather", "Open-Meteo");
+  if (!place) return null;
 
   const forecastUrl = `https://api.open-meteo.com/v1/forecast?latitude=${place.latitude}&longitude=${place.longitude}&daily=temperature_2m_max,precipitation_sum&temperature_unit=fahrenheit&forecast_days=7`;
   const forecast = await safeJson<WeatherForecast>(forecastUrl);
@@ -163,7 +163,7 @@ async function stockSuggestion(query: string): Promise<CustomEventSuggestion | n
   const url = `https://stooq.com/q/l/?s=${symbol.toLowerCase()}.us&f=sd2t2ohlcv&h&e=csv`;
   const text = await safeText(url);
   const price = parseStooqPrice(text);
-  if (!price) return fallbackSuggestion(query, "stocks", "Stooq/FMP fallback");
+  if (!price) return null;
 
   const threshold = niceThreshold(price * 1.06);
   return suggestion({
@@ -183,6 +183,8 @@ async function newsMomentumSuggestion(query: string): Promise<CustomEventSuggest
   const url = `https://api.gdeltproject.org/api/v2/doc/doc?query=${encodeURIComponent(query)}&mode=timelinevolraw&format=json`;
   const json = await safeJson<GdeltTimeline>(url);
   const values = json?.timeline?.slice(-7).map((item) => Number(item.value ?? 0)).filter(Number.isFinite) ?? [];
+  if (values.length < 5) return null;
+
   const latest = values.at(-1) ?? 0;
   const average = values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
   const momentum = average > 0 ? (latest - average) / average : 0;
@@ -201,25 +203,14 @@ async function newsMomentumSuggestion(query: string): Promise<CustomEventSuggest
     source: "GDELT news momentum",
     sourceUrl: url,
     resolutionSource: "GDELT public news timeline",
-    reason: values.length
-      ? `GDELT shows current topic volume ${momentum >= 0 ? "above" : "below"} its 7-day average. This is a watchlist-style event, not a settlement-ready cash market.`
-      : "GDELT did not return enough timeline data, so Scout marks this as a low-confidence event draft.",
+    reason: `GDELT shows current topic volume ${momentum >= 0 ? "above" : "below"} its 7-day average. This is a watchlist-style event, not a settlement-ready cash market.`,
   });
 }
 
 async function sportsSuggestion(query: string): Promise<CustomEventSuggestion | null> {
   if (!/(beat|win|game|match|nba|nfl|mlb|nhl|mls|wnba|soccer|baseball|basketball|football|team)/i.test(query)) return null;
-
-  return suggestion({
-    title: `Will the favorite in "${query}" win the next officially listed matchup?`,
-    category: "sports",
-    probability: 54,
-    confidence: 46,
-    source: "The Odds API adapter pending key + official schedule fallback",
-    sourceUrl: "https://api.the-odds-api.com/docs",
-    resolutionSource: "Official league result feed",
-    reason: "This draft is generated from the sports query shape. Connect The Odds API key to replace this with live odds-implied pricing and schedule data.",
-  });
+  if (!process.env.THE_ODDS_API_KEY) return null;
+  return null;
 }
 
 function suggestion(input: Omit<CustomEventSuggestion, "id" | "lastUpdatedAt">) {
@@ -230,19 +221,6 @@ function suggestion(input: Omit<CustomEventSuggestion, "id" | "lastUpdatedAt">) 
     confidence: Math.round(input.confidence),
     lastUpdatedAt: new Date().toISOString(),
   };
-}
-
-function fallbackSuggestion(query: string, category: EventCategory, source: string) {
-  return suggestion({
-    title: `Will "${query}" resolve YES under a verified ${category} source?`,
-    category,
-    probability: 50,
-    confidence: 30,
-    source,
-    sourceUrl: "/data-sources",
-    resolutionSource: "Needs a verified source before launch",
-    reason: "The external provider was unavailable or returned incomplete data, so Andromeda keeps the draft visible but marks it low confidence.",
-  });
 }
 
 async function safeJson<T>(url: string): Promise<T | null> {

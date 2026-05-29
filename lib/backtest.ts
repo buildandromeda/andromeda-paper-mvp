@@ -6,7 +6,9 @@ export function runProbabilityBacktest(
   bars: MarketPriceBar[],
   config: BacktestConfig,
 ): BacktestResult {
-  if (bars.length < 10) {
+  const sortedBars = [...bars].sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+
+  if (sortedBars.length < 10) {
     throw new Error("Not enough history: at least 10 probability snapshots are required.");
   }
 
@@ -17,9 +19,9 @@ export function runProbabilityBacktest(
   const equityCurve: BacktestResult["equityCurve"] = [];
   const trades: BacktestResult["trades"] = [];
 
-  for (let index = 1; index < bars.length; index += 1) {
-    const previous = bars[index - 1];
-    const current = bars[index];
+  for (let index = 1; index < sortedBars.length; index += 1) {
+    const previous = sortedBars[index - 1];
+    const current = sortedBars[index];
     const price = current.probability / 100;
     const signal = shouldEnter(previous.probability, current.probability, config);
 
@@ -57,7 +59,7 @@ export function runProbabilityBacktest(
   const totalReturnPct = ((cash - 10000) / 10000) * 100;
   const winRate = trades.length ? (wins / trades.length) * 100 : 0;
   const averageHoldPeriods = trades.length
-    ? bars.length / Math.max(1, trades.length)
+    ? sortedBars.length / Math.max(1, trades.length)
     : 0;
   const sharpeLike = trades.length
     ? totalReturnPct / Math.max(1, Math.abs(maxDrawdownPct))
@@ -74,6 +76,14 @@ export function runProbabilityBacktest(
     averageHoldPeriods: Number(averageHoldPeriods.toFixed(2)),
     equityCurve,
     trades,
+    sampleSize: sortedBars.length,
+    dataStart: sortedBars[0]?.time,
+    dataEnd: sortedBars.at(-1)?.time,
+    assumptions: [
+      "Uses only stored/provider-derived probability bars available before each simulated decision.",
+      "Each trade uses a fixed $1,000 notional paper size.",
+      "This is not a prediction of future profit and does not include fees, slippage, or taxes.",
+    ],
     createdAt: nowIso(),
   };
 }

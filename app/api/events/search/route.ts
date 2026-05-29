@@ -19,6 +19,6 @@ export async function GET(req: NextRequest) {
   return ok({
     suggestions,
     updatedAt: new Date().toISOString(),
-    sources: ["CoinGecko", "Open-Meteo", "Stooq", "GDELT", "The Odds API adapter placeholder"],
+    sources: ["CoinGecko", "Open-Meteo", "Stooq", "GDELT", "The Odds API when THE_ODDS_API_KEY is set"],
   });
 }

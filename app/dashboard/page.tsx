@@ -1,20 +1,11 @@
 import { TerminalWorkspace } from "@/components/TerminalWorkspace";
-import { store } from "@/lib/demo-store";
-import { canUseSupabaseStore, supabaseStore } from "@/lib/supabase-store";
+import { buildLiveEventFeed } from "@/lib/live-event-feed";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  let events = store.listEvents();
-
-  if (canUseSupabaseStore()) {
-    try {
-      const databaseEvents = await supabaseStore.listEvents();
-      if (databaseEvents.length > 0) events = databaseEvents;
-    } catch {
-      events = store.listEvents();
-    }
-  }
+  const feed = await buildLiveEventFeed();
+  const events = feed.events;
 
   return <TerminalWorkspace events={events} />;
 }

@@ -16,11 +16,17 @@ The local build includes a fully working demo store so the product can be develo
 - Landing page with waitlist API.
 - Demo onboarding and paper account creation.
 - Event explorer with Andromeda-owned prediction events.
+- Live provider-backed marketplace feed:
+  - Open-Meteo weather events without a key.
+  - CoinGecko crypto events.
+  - Stooq delayed stock threshold events.
+  - GDELT news-momentum events.
+  - The Odds API sports events when `THE_ODDS_API_KEY` is added.
 - Event detail pages with probability history, sources, confidence, and risk notes.
 - Paper order engine with validation, positions, cash, P&L, and trade ledger.
 - Backtest lab with threshold/crossing rules.
 - Strategy saving.
-- Andromeda Scout v0.1 scoped model responses.
+- Andromeda Scout v0.1 scoped model responses, with OpenAI Responses API support when `OPENAI_API_KEY` is added.
 - Model feedback and reward points.
 - Leaderboard.
 - Alerts API/UI.
@@ -58,6 +64,7 @@ supabase/migrations/001_initial_paper_mvp.sql
 
 - `docs/launch-checklist.md`
 - `docs/api-budget.md`
+- `docs/api-key-setup.md`
 
 ## Architecture
 

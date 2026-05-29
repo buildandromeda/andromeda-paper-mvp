@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import type { store } from "@/lib/demo-store";
 import { authenticatedFetch } from "@/lib/client-api";
+import type { CatalogEvent } from "@/lib/event-catalog";
 
-type EventWithLatest = ReturnType<typeof store.listEvents>[number];
+type EventWithLatest = CatalogEvent;
 
 export function ModelChat({ events }: { events: EventWithLatest[] }) {
   const [eventId, setEventId] = useState(events[0]?.id ?? "");

@@ -19,14 +19,16 @@ type TerminalChartPoint = {
 };
 
 export function TradingViewTerminalChart({
-  seed = 387.21,
+  seed = 58.2,
   label = "ANDROMEDA PAPER INDEX",
+  probability,
 }: {
   seed?: number;
   label?: string;
+  probability?: number;
 }) {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const data = useMemo(() => buildCandles(seed), [seed]);
+  const data = useMemo(() => buildCandles(probability ?? seed), [probability, seed]);
   const last = data[data.length - 1];
   const previous = data[data.length - 2];
   const change = last && previous ? last.close - previous.close : 0;
@@ -106,7 +108,7 @@ export function TradingViewTerminalChart({
         <div className="symbol-line">
           <span className="asset-badge">A</span>
           <strong>{label}</strong>
-          <span>CAPITAL</span>
+          <span>PROBABILITY</span>
           <span>PAPER</span>
         </div>
         <div className="chart-tools">
@@ -119,7 +121,7 @@ export function TradingViewTerminalChart({
         <button className="buy-button">BUY</button>
         <button className="sell-button">SELL</button>
         <span className="ohlc-line">
-          C {last?.close.toFixed(2)} <b className={change >= 0 ? "positive" : "negative"}>{change >= 0 ? "+" : ""}{change.toFixed(2)}</b>
+          C {last?.close.toFixed(2)}% <b className={change >= 0 ? "positive" : "negative"}>{change >= 0 ? "+" : ""}{change.toFixed(2)} pts</b>
         </span>
       </div>
       <div ref={containerRef} className="terminal-chart-mount" />
@@ -129,15 +131,15 @@ export function TradingViewTerminalChart({
 
 function buildCandles(seed: number): TerminalChartPoint[] {
   const start = Math.floor((Date.now() - 1000 * 60 * 72) / 1000);
-  let price = seed - 4.8;
+  let price = Math.max(5, Math.min(95, seed - 4.8));
   return Array.from({ length: 72 }).map((_, index) => {
     const wave = Math.sin(index / 5.2) * 0.62 + Math.cos(index / 9.4) * 0.46;
     const drift = index > 28 ? 0.09 : -0.015;
     const shock = index === 33 ? 3.3 : index === 48 ? -2.8 : 0;
     const open = price;
-    const close = Math.max(2, open + wave + drift + shock);
-    const high = Math.max(open, close) + 0.55 + Math.abs(Math.sin(index)) * 0.85;
-    const low = Math.min(open, close) - 0.55 - Math.abs(Math.cos(index)) * 0.75;
+    const close = Math.max(1, Math.min(99, open + wave + drift + shock));
+    const high = Math.min(99, Math.max(open, close) + 0.55 + Math.abs(Math.sin(index)) * 0.85);
+    const low = Math.max(1, Math.min(open, close) - 0.55 - Math.abs(Math.cos(index)) * 0.75);
     price = close;
     return {
       time: start + index * 60,

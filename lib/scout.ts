@@ -71,10 +71,14 @@ export function answerPrompt(prompt: string, event?: PredictionEvent, latest?: P
   }
 
   const score = scoreEvent(event, latest);
+  const calculation = latest.calculation
+    ? `Probability source: ${latest.calculation.provider}. Formula: ${latest.calculation.formula}. Inputs: ${latest.calculation.inputs.map((input) => `${input.label}=${input.value}`).join(", ")}.`
+    : `Probability source: stored snapshot. ${score.explanation}`;
+
   if (normalized.includes("strategy") || normalized.includes("rule")) {
     return {
       confidence: score.confidence,
-      answer: `Strategy rule: paper-buy YES on ${event.title} if probability crosses above ${Math.max(50, Math.round(score.probability - 3))}% with confidence above 60. Exit if probability falls 8 points from entry or if the event enters stale-data status.`,
+      answer: `Strategy rule: paper-buy YES on ${event.title} if probability crosses above ${Math.max(50, Math.round(score.probability - 3))}% with confidence above 60. Exit if probability falls 8 points from entry or if the event enters stale-data status. ${calculation}`,
     };
   }
   if (normalized.includes("risk")) {
@@ -92,6 +96,107 @@ export function answerPrompt(prompt: string, event?: PredictionEvent, latest?: P
 
   return {
     confidence: score.confidence,
-    answer: `${event.title} is currently modeled at ${score.probability}% with ${score.band} confidence. ${score.explanation} Risk note: ${score.riskNotes}`,
+    answer: `${event.title} is currently modeled at ${score.probability}% with ${score.band} confidence. ${calculation} Risk note: ${score.riskNotes}`,
   };
+}
+
+export async function answerPromptAsync(prompt: string, event?: PredictionEvent, latest?: ProbabilitySnapshot) {
+  const fallback = answerPrompt(prompt, event, latest);
+  const apiKey = process.env.OPENAI_API_KEY;
+
+  if (!apiKey) {
+    return {
+      confidence: fallback.confidence,
+      answer: `[Local fallback: add OPENAI_API_KEY to enable Scout chat.] ${fallback.answer}`,
+    };
+  }
+
+  if (!event || !latest) {
+    return fallback;
+  }
+
+  const scope = [
+    "Ask about a specific event",
+    "Ask about current paper portfolio",
+    "Generate strategy rules from plain English",
+    "Explain a backtest result",
+    "Compare two events",
+  ].join("; ");
+
+  const context = {
+    event: {
+      title: event.title,
+      category: event.category,
+      description: event.description,
+      status: event.status,
+      closesAt: event.closesAt,
+      resolutionSource: event.resolutionSource,
+      resolutionRule: event.resolutionRule,
+    },
+    probability: {
+      value: latest.probability,
+      confidence: latest.confidence,
+      sourceCount: latest.sourceCount,
+      dataFreshnessMinutes: latest.dataFreshnessMinutes,
+      explanation: latest.explanation,
+      riskNotes: latest.riskNotes,
+      calculation: latest.calculation ?? null,
+    },
+  };
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: process.env.OPENAI_MODEL || "gpt-4.1-mini",
+        input: [
+          {
+            role: "system",
+            content:
+              "You are Andromeda Scout v0.1. You explain paper prediction-market events using only the provided event context. You must not invent probabilities, sources, odds, API data, returns, or backtest results. If the user asks out of scope, politely say Scout V1 only supports: " + scope + ". Keep answers concise, direct, and practical.",
+          },
+          {
+            role: "user",
+            content: JSON.stringify({ prompt, context }),
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const text = await response.text();
+      return {
+        confidence: fallback.confidence,
+        answer: `[OpenAI request failed: ${response.status}. Using local fallback.] ${fallback.answer} ${text.slice(0, 160)}`,
+      };
+    }
+
+    const json = await response.json();
+    const text = extractResponseText(json);
+    return {
+      confidence: fallback.confidence,
+      answer: text || fallback.answer,
+    };
+  } catch (error) {
+    return {
+      confidence: fallback.confidence,
+      answer: `[OpenAI request failed locally. Using local fallback.] ${fallback.answer}`,
+    };
+  }
+}
+
+function extractResponseText(json: any) {
+  if (typeof json.output_text === "string") return json.output_text;
+  const output = Array.isArray(json.output) ? json.output : [];
+  for (const item of output) {
+    const content = Array.isArray(item.content) ? item.content : [];
+    for (const part of content) {
+      if (typeof part.text === "string") return part.text;
+    }
+  }
+  return "";
 }

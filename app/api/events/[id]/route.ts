@@ -1,10 +1,18 @@
 import type { NextRequest } from "next/server";
 import { fail, ok } from "@/lib/api";
 import { store } from "@/lib/demo-store";
+import { getLiveEvent } from "@/lib/live-event-feed";
 import { canUseSupabaseStore, supabaseStore } from "@/lib/supabase-store";
 
 export async function GET(_req: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { id } = await context.params;
+  const liveEvent = await getLiveEvent(id);
+  if (liveEvent) return ok({
+    event: liveEvent,
+    sources: liveEvent.sources,
+    history: liveEvent.history,
+  });
+
   if (canUseSupabaseStore()) {
     try {
       const event = await supabaseStore.getEvent(id);

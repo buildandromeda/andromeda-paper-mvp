@@ -4,17 +4,19 @@ import { ConfidenceBadge } from "@/components/ConfidenceBadge";
 import { PaperOrderTicket } from "@/components/PaperOrderTicket";
 import { ProbabilityChart } from "@/components/ProbabilityChart";
 import { store } from "@/lib/demo-store";
+import type { CatalogEvent } from "@/lib/event-catalog";
+import { getLiveEvent } from "@/lib/live-event-feed";
 import { canUseSupabaseStore, supabaseStore } from "@/lib/supabase-store";
 
 export const dynamic = "force-dynamic";
 
 export default async function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  let event = store.getEvent(id);
-  let history = event ? store.history(event.id) : [];
-  let sources = event ? store.sources(event.id) : [];
+  let event: CatalogEvent | null = await getLiveEvent(id);
+  let history = event?.history ?? [];
+  let sources = event?.sources ?? [];
 
-  if (canUseSupabaseStore()) {
+  if (!event && canUseSupabaseStore()) {
     try {
       const databaseEvent = await supabaseStore.getEvent(id);
       if (databaseEvent) {
@@ -25,6 +27,12 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
     } catch {
       // Keep demo event data if Supabase is temporarily unavailable.
     }
+  }
+
+  if (!event) {
+    event = store.getEvent(id);
+    history = event ? store.history(event.id) : [];
+    sources = event ? store.sources(event.id) : [];
   }
 
   if (!event) notFound();
@@ -46,6 +54,18 @@ export default async function EventDetailPage({ params }: { params: Promise<{ id
           <ProbabilityChart history={history} />
           <p className="muted">{event.latest.explanation}</p>
           <p className="muted">Risk: {event.latest.riskNotes}</p>
+          {event.latest.calculation && (
+            <div className="calculation-panel">
+              <strong>Exact calculation</strong>
+              <p>{event.latest.calculation.formula}</p>
+              <div className="calculation-grid">
+                {event.latest.calculation.inputs.map((input) => (
+                  <span key={input.label}><b>{input.label}</b>{input.value}</span>
+                ))}
+              </div>
+              <a href={event.latest.calculation.sourceUrl} target="_blank" rel="noreferrer">Open source feed</a>
+            </div>
+          )}
         </section>
         <PaperOrderTicket event={event} />
       </div>

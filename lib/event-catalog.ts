@@ -1,7 +1,12 @@
 import { store } from "@/lib/demo-store";
-import type { EventCategory } from "@/lib/types";
+import type { EventCategory, EventSource, MarketPriceBar, PredictionEvent, ProbabilitySnapshot } from "@/lib/types";
 
-export type CatalogEvent = ReturnType<typeof store.listEvents>[number];
+export type CatalogEvent = PredictionEvent & {
+  latest: ProbabilitySnapshot;
+  sources: EventSource[];
+  history?: ProbabilitySnapshot[];
+  bars?: MarketPriceBar[];
+};
 
 export function catalogEvents(filters?: { category?: EventCategory | "all"; q?: string }) {
   return sortMarketplaceEvents(store.listEvents(filters));

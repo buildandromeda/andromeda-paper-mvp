@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Activity, Clock, RefreshCw, Search, Sparkles, TrendingUp } from "lucide-react";
+import { AlertTriangle, Clock, RefreshCw, Search, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { ConfidenceBadge } from "@/components/ConfidenceBadge";
 import type { CustomEventSuggestion } from "@/lib/custom-events";
@@ -21,8 +21,18 @@ const categories: Array<{ label: string; value: CategoryFilter }> = [
   { label: "Media", value: "entertainment" },
 ];
 
-export function EventMarketplace({ initialEvents }: { initialEvents: CatalogEvent[] }) {
+export function EventMarketplace({
+  initialEvents,
+  initialWarnings = [],
+  initialMissingKeys = [],
+}: {
+  initialEvents: CatalogEvent[];
+  initialWarnings?: string[];
+  initialMissingKeys?: string[];
+}) {
   const [events, setEvents] = useState(initialEvents);
+  const [warnings, setWarnings] = useState(initialWarnings);
+  const [missingKeys, setMissingKeys] = useState(initialMissingKeys);
   const [category, setCategory] = useState<CategoryFilter>("all");
   const [query, setQuery] = useState("");
   const [drafts, setDrafts] = useState<CustomEventSuggestion[]>([]);
@@ -44,6 +54,8 @@ export function EventMarketplace({ initialEvents }: { initialEvents: CatalogEven
       if (!response.ok || !alive) return;
       const payload = await response.json();
       setEvents(payload.events ?? []);
+      setWarnings(payload.warnings ?? []);
+      setMissingKeys(payload.missingKeys ?? []);
       setLastUpdated(payload.updatedAt ?? new Date().toISOString());
     }
 
@@ -73,14 +85,14 @@ export function EventMarketplace({ initialEvents }: { initialEvents: CatalogEven
           <span className="violet-kicker">Live event marketplace</span>
           <h1>Trade specific outcomes, not broad vibes.</h1>
           <p>
-            Andromeda creates paper prediction events from sports, weather, economics, equities, crypto, politics,
-            and media data sources. Prices refresh automatically and every event shows confidence and source freshness.
+            Andromeda creates paper prediction events from actual provider feeds. If a source key is missing, that
+            category is hidden or marked as unavailable instead of being faked.
           </p>
         </div>
         <div className="market-live-tile">
           <div className="live-status"><i /> Live refresh</div>
           <strong>{visibleEvents.length}</strong>
-          <span>active paper markets</span>
+          <span>provider-backed paper markets</span>
           {topMover ? <p>{topMover.title}</p> : <p>Loading event feed...</p>}
         </div>
       </section>
@@ -103,9 +115,20 @@ export function EventMarketplace({ initialEvents }: { initialEvents: CatalogEven
         </div>
         <div className="market-refresh-note">
           <RefreshCw size={15} className={isPending ? "spin" : ""} />
-          Updated {timeAgo(lastUpdated)}. No Kalshi API. External source adapters + Andromeda Scout pricing.
+          Updated {timeAgo(lastUpdated)}. No Kalshi API. Probabilities show provider, formula, and inputs.
         </div>
       </section>
+
+      {(warnings.length > 0 || missingKeys.length > 0) && (
+        <section className="source-warning-panel">
+          <AlertTriangle size={18} />
+          <div>
+            <strong>Source status</strong>
+            <p>{warnings[0] ?? "Some categories need API keys before Andromeda can show them honestly."}</p>
+            {missingKeys.length > 0 && <small>Missing keys: {missingKeys.join(", ")}</small>}
+          </div>
+        </section>
+      )}
 
       <div className="market-category-rail" aria-label="Event categories">
         {categories.map((item) => (
@@ -143,9 +166,16 @@ export function EventMarketplace({ initialEvents }: { initialEvents: CatalogEven
           </div>
           <p>{visibleEvents.length} events. Auto-refreshing every 15 seconds.</p>
         </div>
-        <div className="market-list">
-          {visibleEvents.map((event) => <MarketEventRow event={event} key={event.id} />)}
-        </div>
+        {visibleEvents.length === 0 ? (
+          <div className="empty-market-state">
+            <strong>No honest markets for this filter yet.</strong>
+            <p>That usually means the provider key is missing or the provider returned no current events. Andromeda is intentionally not filling this page with fake probabilities.</p>
+          </div>
+        ) : (
+          <div className="market-list">
+            {visibleEvents.map((event) => <MarketEventRow event={event} key={event.id} />)}
+          </div>
+        )}
       </section>
     </div>
   );
@@ -154,7 +184,7 @@ export function EventMarketplace({ initialEvents }: { initialEvents: CatalogEven
 function MarketEventRow({ event }: { event: CatalogEvent }) {
   const yes = event.latest.probability;
   const no = 100 - yes;
-  const volume = syntheticVolume(event.title, yes);
+  const calculation = event.latest.calculation;
 
   return (
     <Link className="market-row" href={`/events/${event.slug}`}>
@@ -162,16 +192,26 @@ function MarketEventRow({ event }: { event: CatalogEvent }) {
         <div className="market-row-kicker">
           <span className={`category category-${event.category}`}>{event.category}</span>
           <span className="live-pill"><i /> {event.latest.dataFreshnessMinutes}m fresh</span>
+          <span>{calculation?.provider ?? "stored source"}</span>
           <span><Clock size={13} /> closes {daysUntil(event.closesAt)}</span>
         </div>
         <h3>{event.title}</h3>
         <p>{event.resolutionSource}</p>
+        {calculation && (
+          <details className="market-calculation" onClick={(event) => event.stopPropagation()}>
+            <summary>How this probability was calculated</summary>
+            <p>{calculation.formula}</p>
+            <ul>
+              {calculation.inputs.slice(0, 4).map((input) => <li key={input.label}><b>{input.label}:</b> {input.value}</li>)}
+            </ul>
+          </details>
+        )}
       </div>
       <Sparkline seed={event.title} probability={yes} />
       <div className="market-row-prices">
         <span className="yes-price">YES {yes.toFixed(0)}c</span>
         <span className="no-price">NO {no.toFixed(0)}c</span>
-        <small>${volume.toLocaleString()} vol</small>
+        <small>{event.providerBacked ? "API backed" : "stored"} feed</small>
       </div>
       <ConfidenceBadge
         confidence={event.latest.confidence}
@@ -213,11 +253,6 @@ function Sparkline({ seed, probability }: { seed: string; probability: number })
       ))}
     </div>
   );
-}
-
-function syntheticVolume(seed: string, probability: number) {
-  const score = seed.split("").reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  return Math.round(2600 + score * 6 + probability * 110);
 }
 
 function daysUntil(date: string) {

@@ -15,11 +15,11 @@ import {
   Sparkles,
   WalletCards,
 } from "lucide-react";
-import type { store } from "@/lib/demo-store";
+import type { CatalogEvent } from "@/lib/event-catalog";
 import { authenticatedFetch } from "@/lib/client-api";
 import { TradingViewTerminalChart } from "@/components/TradingViewTerminalChart";
 
-type EventWithLatest = ReturnType<typeof store.listEvents>[number];
+type EventWithLatest = CatalogEvent;
 
 export function TerminalWorkspace({ events }: { events: EventWithLatest[] }) {
   const [eventId, setEventId] = useState(events[0]?.id ?? "");
@@ -100,7 +100,10 @@ export function TerminalWorkspace({ events }: { events: EventWithLatest[] }) {
       </aside>
 
       <main className="terminal-main">
-        <TradingViewTerminalChart label={activeEvent?.title ?? "ANDROMEDA PAPER INDEX"} />
+        <TradingViewTerminalChart
+          label={activeEvent?.title ?? "ANDROMEDA PAPER INDEX"}
+          probability={activeEvent?.latest.probability}
+        />
         <div className="terminal-bottom-bar">
           <button><Braces size={16} /> Code</button>
           <button><Maximize2 size={16} /> Fullscreen</button>
@@ -120,6 +123,7 @@ export function TerminalWorkspace({ events }: { events: EventWithLatest[] }) {
           <strong>{activeEvent?.title}</strong>
         </div>
         <select value={eventId} onChange={(event) => setEventId(event.target.value)}>
+          {events.length === 0 && <option>No provider events loaded</option>}
           {events.map((event) => <option key={event.id} value={event.id}>{event.title}</option>)}
         </select>
         <div className="ticket-actions">

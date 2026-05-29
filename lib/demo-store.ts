@@ -1,5 +1,6 @@
 import { runProbabilityBacktest } from "@/lib/backtest";
-import { answerPrompt, scoreEvent } from "@/lib/scout";
+import type { LiveEvent } from "@/lib/live-event-feed";
+import { answerPromptAsync, scoreEvent } from "@/lib/scout";
 import { seedBars, seedEvents, seedSnapshots, seedSources } from "@/lib/seed";
 import type {
   Alert,
@@ -26,6 +27,7 @@ import {
 } from "@/lib/utils";
 
 const events = seedEvents();
+const runtimeEvents = new Map<string, LiveEvent>();
 const accounts = new Map<string, PaperAccount>();
 const positions = new Map<string, PaperPosition[]>();
 const trades = new Map<string, PaperTrade[]>();
@@ -41,27 +43,42 @@ const waitlist: Array<{ email: string; role?: string; createdAt: string }> = [];
 export const store = {
   listEvents(filters?: { category?: EventCategory | "all"; q?: string }) {
     const q = filters?.q?.toLowerCase().trim();
-    return events
+    return [
+      ...events.map((event) => withLatest(event)),
+      ...runtimeEvents.values(),
+    ]
       .filter((event) => !filters?.category || filters.category === "all" || event.category === filters.category)
-      .filter((event) => !q || event.title.toLowerCase().includes(q) || event.category.includes(q))
-      .map((event) => withLatest(event));
+      .filter((event) => !q || event.title.toLowerCase().includes(q) || event.category.includes(q));
   },
 
   getEvent(idOrSlug: string) {
+    const runtime = [...runtimeEvents.values()].find((item) => item.id === idOrSlug || item.slug === idOrSlug);
+    if (runtime) return runtime;
     const event = events.find((item) => item.id === idOrSlug || item.slug === idOrSlug);
     return event ? withLatest(event) : null;
   },
 
   history(eventId: string) {
+    const runtime = runtimeEvents.get(eventId);
+    if (runtime) return runtime.history;
     return seedSnapshots().filter((snapshot) => snapshot.eventId === eventId);
   },
 
   bars(eventId: string) {
+    const runtime = runtimeEvents.get(eventId);
+    if (runtime) return runtime.bars;
     return seedBars().filter((bar) => bar.eventId === eventId);
   },
 
   sources(eventId: string) {
+    const runtime = runtimeEvents.get(eventId);
+    if (runtime) return runtime.sources;
     return seedSources().filter((source) => source.eventId === eventId);
+  },
+
+  registerLiveEvent(event: LiveEvent) {
+    runtimeEvents.set(event.id, event);
+    return event;
   },
 
   ensureUser(userId = DEMO_USER_ID) {
@@ -228,11 +245,11 @@ export const store = {
     return strategies.get(userId) ?? [];
   },
 
-  analyze(userId: string, prompt: string, eventId?: string) {
+  async analyze(userId: string, prompt: string, eventId?: string) {
     this.ensureUser(userId);
     const event = eventId ? this.getEvent(eventId) : this.listEvents()[0];
     const latest = event ? event.latest : undefined;
-    const response = answerPrompt(prompt, event ?? undefined, latest);
+    const response = await answerPromptAsync(prompt, event ?? undefined, latest);
     const run: ModelRun = {
       id: newId("run"),
       userId,
